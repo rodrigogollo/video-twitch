@@ -1,0 +1,6 @@
+.Video {
+  display: inline-flex;
+  text-align: center;
+  flex-direction: column;
+  padding: 10px;
+}
