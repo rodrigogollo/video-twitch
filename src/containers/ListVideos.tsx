@@ -1,7 +1,7 @@
 import Video from "../components/Video";
 import "./ListVideos.css";
-import type { IClip } from "../App.d.js";
 import { useEffect, useState } from "react";
+import { IClip } from "../AppTypes";
 
 interface Props {
   clips: IClip[];

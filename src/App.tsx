@@ -1,10 +1,9 @@
 import "./App.css";
-import clipsJSON from "./downloads/clips.json";
 import Filters from "./containers/Filters";
 import ListVideos from "./containers/ListVideos";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-import type { IClip } from "./App.d.js";
+import type { IClip } from "./AppTypes.js";
 
 function App() {
   const [clipList, setClipList] = useState<IClip[]>([]);
@@ -49,8 +48,12 @@ function App() {
 
   return (
     <div className="App">
-      {/* <Filters onHandleFilter={handleSearchFilter} /> */}
-      <ListVideos clips={clipList} />
+      <Filters handleSubmit={handleSearchFilter} />
+      {isLoading ? (
+        <p>LOADING CLIPS</p>
+      ) : (
+        <ListVideos clips={clipList} handleDelete={handleDelete} />
+      )}
     </div>
   );
 }
