@@ -1,0 +1,36 @@
+.list-videos {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.list-videos .container {
+  display: flex;
+  border: 1px solid black;
+  border-radius: 10px;
+  margin: 5px;
+  padding: 5px;
+  flex-direction: column;
+  height: 300px;
+  justify-content: center;
+  align-items: center;
+}
+
+.list-videos button {
+  height: 10%;
+  margin-top: 5px;
+  background-color: blueviolet;
+  color: white;
+  border: 1px solid black;
+  padding: 5px;
+  border-radius: 5px;
+  width: 30%;
+  position: relative;
+}
+
+.list-videos button:hover {
+  cursor: pointer;
+  filter: brightness(80%);
+}
