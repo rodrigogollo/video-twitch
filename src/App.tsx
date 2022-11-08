@@ -1,24 +1,24 @@
-import "./App.css";
-import clipsJSON from "./downloads/clips.json";
-import Filters from "./containers/Filters";
-import ListVideos from "./containers/ListVideos";
-import { useState } from "react";
-
-import type { IClip } from "./App.d.js";
+import React from 'react';
+import logo from './logo.svg';
+import './App.css';
 
 function App() {
-  const [clipList, setClipList] = useState<IClip[]>([]);
-
-  async function handleSearchFilter(e: React.FormEvent<SubmitEvent>) {
-    e.preventDefault();
-    const clips = await fetch("/clips");
-    // setClipList<IClip[]>(clips);
-  }
-
   return (
     <div className="App">
-      {/* <Filters onHandleFilter={handleSearchFilter} /> */}
-      <ListVideos clips={clipList} />
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+        <p>
+          Edit <code>src/App.tsx</code> and save to reload.
+        </p>
+        <a
+          className="App-link"
+          href="https://reactjs.org"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn React
+        </a>
+      </header>
     </div>
   );
 }
