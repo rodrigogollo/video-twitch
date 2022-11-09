@@ -1,6 +1,6 @@
 import "./App.css";
-import Filters from "./containers/Filters";
-import ListVideos from "./containers/ListVideos";
+import Filters from "../components/Filters";
+import ListVideos from "../components/ListVideos";
 import { useState, useEffect } from "react";
 
 import type { IClip } from "./AppTypes.js";
@@ -46,13 +46,27 @@ function App() {
       });
   }
 
+  async function handleMove(way: string, index: number) {
+    await fetch(`http://localhost:5000/api/move/${way}/${index}`)
+      .then((res) => res.json())
+      .then((clipsJSON) => {
+        setClipList(clipsJSON.clips);
+      });
+  }
+
   return (
     <div className="App">
       <Filters handleSubmit={handleSearchFilter} />
       {isLoading ? (
-        <p>LOADING CLIPS</p>
+        <p>LOADING CLIPS...</p>
+      ) : clipList.length === 0 ? (
+        <p>NO CLIPS FOUND</p>
       ) : (
-        <ListVideos clips={clipList} handleDelete={handleDelete} />
+        <ListVideos
+          clips={clipList}
+          handleDelete={handleDelete}
+          handleMove={handleMove}
+        />
       )}
     </div>
   );

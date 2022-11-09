@@ -7,43 +7,48 @@ const { asyncWrapper, time_convert } = require("../utils");
 const { readFileSync } = require("fs");
 
 async function makeVideo(name, type, size) {
-  console.log(
-    `Getting the top ${size} clips of the ${type} '${name}' from yesterday.`
-  );
+  try {
+    console.log(
+      `Getting the top ${size} clips of the ${type} '${name}' from yesterday.`
+    );
 
-  asyncWrapper(clearFolder(__dirname + `/../downloads/`));
+    asyncWrapper(clearFolder(__dirname + `/../downloads/`));
 
-  let today = new Date();
-  let yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  yesterday.setHours(0, 0, 0, 0);
+    let today = new Date();
+    let yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
 
-  let date = yesterday;
+    let date = yesterday;
 
-  console.log(
-    "Initial Date: ",
-    date.toLocaleString("en-US"),
-    "\nFinal Date: ",
-    today.toLocaleString("en-US")
-  );
-  let clipsArray = await getClipsData(type, name, date, today);
+    console.log(
+      "Initial Date: ",
+      date.toLocaleString("en-US"),
+      "\nFinal Date: ",
+      today.toLocaleString("en-US")
+    );
+    let clipsArray = await getClipsData(type, name, date, today);
 
-  // console.log("dados:", clipsArray.data);
+    // console.log("dados:", clipsArray.data);
 
-  let topClips = await filterClips(clipsArray, size);
+    let topClips = await filterClips(clipsArray, size);
 
-  let clipList = await downloadClips(topClips);
+    let clipList = await downloadClips(topClips);
 
-  clipList.sort(
-    (a, b) =>
-      a.video.split(".mp4")[0].replace("clip", "") -
-      b.video.split(".mp4")[0].replace("clip", "")
-  );
-  await writeClipListToJSON(clipList);
+    clipList.sort(
+      (a, b) =>
+        a.video.split(".mp4")[0].replace("clip", "") -
+        b.video.split(".mp4")[0].replace("clip", "")
+    );
+    await writeClipListToJSON(clipList);
 
-  console.log("retornando");
-  const clipsJSON = readFileSync(__dirname + `/../downloads/clips.json`);
-  return clipsJSON;
+    console.log("retornando");
+    const clipsJSON = readFileSync(__dirname + `/../downloads/clips.json`);
+    return clipsJSON;
+  } catch (e) {
+    console.log(e);
+    return JSON.stringify({ clips: [] });
+  }
 }
 
 async function downloadClips(topClips) {

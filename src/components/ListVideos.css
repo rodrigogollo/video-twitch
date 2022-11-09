@@ -13,7 +13,7 @@
   margin: 5px;
   padding: 5px;
   flex-direction: column;
-  height: 300px;
+  min-height: 300px;
   justify-content: center;
   align-items: center;
 }
@@ -33,4 +33,11 @@
 .list-videos button:hover {
   cursor: pointer;
   filter: brightness(80%);
+}
+
+.buttons-container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: center;
 }
