@@ -7,11 +7,17 @@ interface IVideoProps {
 }
 
 function Video({ source, title }: IVideoProps): JSX.Element {
-  const [video, setVideo] = useState(null);
+  const [video, setVideo] = useState();
 
   useEffect(() => {
     async function getVideoData() {
-      const video = await require(`../downloads/${source}`);
+      let video;
+      try {
+        video = await require(`../../downloads/${source}`);
+        setVideo(video);
+      } catch (e) {
+        setVideo(undefined);
+      }
       setVideo(video);
     }
     getVideoData();

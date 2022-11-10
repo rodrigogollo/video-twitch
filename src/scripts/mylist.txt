@@ -1,0 +1,3 @@
+file './clips/fullintro.ts'
+file './clips/clip2.ts'
+file './clips/outro.ts'

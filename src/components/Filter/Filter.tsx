@@ -1,5 +1,5 @@
 import { Component } from "react";
-import "./Filters.css";
+import "./Filter.css";
 
 type Props = {
   handleSubmit: (e: React.SyntheticEvent) => void;
@@ -9,13 +9,15 @@ type State = {
   name: string;
   type: string;
   qty: string;
+  date: string;
 };
 
-class Filters extends Component<Props, State> {
+class Filter extends Component<Props, State> {
   state: State = {
     name: "jerma985",
     type: "streamer",
     qty: "1",
+    date: "yesterday",
   };
 
   onChange = (
@@ -29,7 +31,7 @@ class Filters extends Component<Props, State> {
 
   render() {
     return (
-      <div className="filters">
+      <div className="Filter">
         <form onSubmit={this.props.handleSubmit}>
           <select
             id="type"
@@ -58,6 +60,18 @@ class Filters extends Component<Props, State> {
             onChange={this.onChange}
           />
 
+          <select
+            id="date"
+            name="date"
+            value={this.state.date}
+            onChange={this.onChange}
+          >
+            <option value="yesterday">Yesterday</option>
+            <option value="three">Three Days</option>
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+          </select>
+
           <button type="submit">Search</button>
         </form>
       </div>
@@ -65,4 +79,4 @@ class Filters extends Component<Props, State> {
   }
 }
 
-export default Filters;
+export default Filter;

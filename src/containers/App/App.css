@@ -1,0 +1,30 @@
+.App {
+  text-align: center;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+button {
+  background-color: coral;
+  color: black;
+  border: 1px solid black;
+  font-weight: bold;
+  text-transform: capitalize;
+  padding: 10px;
+  margin: 10px;
+  border-radius: 5px;
+  width: 150px;
+}
+button:hover {
+  cursor: pointer;
+}
+
+.container > video {
+  margin-top: 40px;
+  margin-bottom: 20px;
+}

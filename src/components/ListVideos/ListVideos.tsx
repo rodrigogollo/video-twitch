@@ -1,8 +1,8 @@
-import Video from "../components/Video";
+import Video from "../../components/Video/Video";
 import "./ListVideos.css";
 import { useEffect, useState } from "react";
-import { IClip } from "../containers/AppTypes";
-import { swapItems } from "../utils/index";
+import { IClip } from "../../containers/App/AppTypes";
+import { swapItems } from "../../utils/index";
 
 interface Props {
   clips: IClip[];

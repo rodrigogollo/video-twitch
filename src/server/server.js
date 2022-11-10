@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const { makeVideo, writeClipListToJSON } = require("./index2");
+const { generateClips, writeClipListToJSON, makeFullVideo } = require(".");
 const { readFileSync } = require("fs");
 const { swapItems } = require("../utils/index");
 
@@ -38,31 +38,35 @@ app.get("/api/move/:way/:index", async (req, res) => {
   const originClipsJSON = readFileSync(__dirname + "/../downloads/clips.json");
   const originClips = JSON.parse(originClipsJSON);
   let newArrayOrder;
-  if (way === "right") {
-    newArrayOrder = await swapItems(
-      originClips.clips,
-      index,
-      parseInt(index) + 1
-    );
-    await writeClipListToJSON(newArrayOrder);
-  } else if (way === "left") {
-    newArrayOrder = await swapItems(
-      originClips.clips,
-      index,
-      parseInt(index) - 1
-    );
-    await writeClipListToJSON(newArrayOrder);
-  }
+  newArrayOrder = await swapItems(
+    originClips.clips,
+    index,
+    way === "right" ? parseInt(index) + 1 : parseInt(index) - 1
+  );
+
+  await writeClipListToJSON(newArrayOrder);
   const arrayUpdated = readFileSync(__dirname + "/../downloads/clips.json");
   res.send(arrayUpdated);
 });
 
-app.get("/api/:name/:type/:qty", async (req, res) => {
-  const { name, type, qty } = req.params;
-  const newClips = await makeVideo(name, type, qty);
+app.get("/api/:name/:type/:qty/:date", async (req, res) => {
+  const { name, type, qty, date } = req.params;
+  const newClips = await generateClips(name, type, qty, date);
   setTimeout(() => {
     res.send(newClips);
   }, 2000);
+});
+
+app.get("/api/generate", async (req, res) => {
+  try {
+    await makeFullVideo();
+  } catch (e) {
+    console.log(e);
+    res.send("error");
+  }
+  setTimeout(() => {
+    res.send("done");
+  }, 5000);
 });
 
 app.listen(5000, () => {

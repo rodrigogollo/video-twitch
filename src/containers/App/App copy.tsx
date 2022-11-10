@@ -1,6 +1,6 @@
 import "./App.css";
-import Filters from "../components/Filters";
-import ListVideos from "../components/ListVideos";
+import Filter from "../../components/Filter/Filter";
+import ListVideos from "../../components/ListVideos/ListVideos";
 import { useState, useEffect } from "react";
 
 import type { IClip } from "./AppTypes.js";
@@ -8,6 +8,8 @@ import type { IClip } from "./AppTypes.js";
 function App() {
   const [clipList, setClipList] = useState<IClip[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingFullVideo, setLoadingFullVideo] = useState(true);
+  const [fullVideo, setFullVideo] = useState(undefined);
 
   async function handleSearchFilter(e: React.SyntheticEvent) {
     setIsLoading(true);
@@ -16,12 +18,14 @@ function App() {
       name: { value: string };
       type: { value: string };
       qty: { value: string };
+      date: { value: string };
     };
     const name = target.name.value;
     const type = target.type.value;
     const qty = target.qty.value;
+    const date = target.date.value;
 
-    await fetch(`http://localhost:5000/api/${name}/${type}/${qty}`)
+    await fetch(`http://localhost:5000/api/${name}/${type}/${qty}/${date}`)
       .then((res) => res.json())
       .then((clipsJSON) => {
         setClipList(clipsJSON.clips);
@@ -54,19 +58,42 @@ function App() {
       });
   }
 
+  async function handleGenerateVideo() {
+    setLoadingFullVideo(true);
+    await fetch(`http://localhost:5000/api/generate`).then(() => {
+      setLoadingFullVideo(false);
+      let video = require("../../scripts/clips/output.mp4");
+      setFullVideo(video);
+    });
+  }
+
   return (
     <div className="App">
-      <Filters handleSubmit={handleSearchFilter} />
+      <Filter handleSubmit={handleSearchFilter} />
       {isLoading ? (
         <p>LOADING CLIPS...</p>
       ) : clipList.length === 0 ? (
         <p>NO CLIPS FOUND</p>
       ) : (
-        <ListVideos
-          clips={clipList}
-          handleDelete={handleDelete}
-          handleMove={handleMove}
-        />
+        <div className="container">
+          <ListVideos
+            clips={clipList}
+            handleDelete={handleDelete}
+            handleMove={handleMove}
+          />
+          <button onClick={handleGenerateVideo}>Generate Full Video</button>
+          {isLoadingFullVideo ? (
+            <video
+              width="500px"
+              controls
+              onLoadStart={(videoObject) =>
+                (videoObject.currentTarget.volume = 0.3)
+              }
+            >
+              <source src={fullVideo} type="video/mp4"></source>
+            </video>
+          ) : null}
+        </div>
       )}
     </div>
   );

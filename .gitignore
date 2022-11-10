@@ -25,3 +25,5 @@ yarn-error.log*
 src/downloads
 src/server/*.json
 src/.env
+src/scripts/clips
+src/scripts/*.mp4

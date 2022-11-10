@@ -2,114 +2,166 @@ const https = require("https"); // or 'https' for https:// URLs
 const fs = require("fs");
 const path = require("path");
 var ffmpeg = require("fluent-ffmpeg");
-const twitchGets = require("./twitchGets").default;
-// const cliProgress = require("cli-progress");
-const { asyncWrapper } = require("../utils");
+const twitchGets = require("./twitchGets");
+const { asyncWrapper, time_convert } = require("../utils");
+const { readFileSync } = require("fs");
+var cp = require("child_process");
+const { resolve } = require("path");
 
-const args = require("minimist")(process.argv.slice(2));
-args.name =
-  args.name + " " + process.argv.slice(8, process.argv.length).join(" ");
-args.name = args.name.trim();
+async function generateClips(name, type, size, date) {
+  try {
+    console.log(
+      `Getting the top ${size} clips of the ${type} '${name}' from ${date}.`
+    );
 
-// node index.js func= (game || broadcaster) name= (csgo || imaqtpie) size=10 (clips size) date= (day, week, month)
+    asyncWrapper(clearFolder(__dirname + `/../downloads/`));
+    asyncWrapper(clearFolder(__dirname + `/../scripts/clips`));
+    let today = new Date();
+    let dateValue = setOptionDate(date);
 
-// let progressBarList = {}
+    console.log(
+      "Initial Date: ",
+      dateValue.toLocaleString("en-US"),
+      "\nFinal Date: ",
+      today.toLocaleString("en-US")
+    );
+    let clipsArray = await getClipsData(type, name, dateValue, today);
 
-// let multibar = new cliProgress.MultiBar({
-//   clearOnComplete: false,
-//   hideCursor: true
-// }, cliProgress.Presets.legacy);
+    // console.log("dados:", clipsArray.data);
 
-async function makeVideo() {
-  console.log(
-    `Getting the top ${args.size} clips of the ${args.func} '${args.name}' from the past ${args.date}.`
-  );
+    let topClips = await filterClips(clipsArray, size);
 
-  asyncWrapper(clearFolder(__dirname + `/../downloads/`));
+    let clipList = await downloadClips(topClips);
 
+    clipList.sort(
+      (a, b) =>
+        a.video.split(".mp4")[0].replace("clip", "") -
+        b.video.split(".mp4")[0].replace("clip", "")
+    );
+    await writeClipListToJSON(clipList);
+
+    const clipsJSON = readFileSync(__dirname + `/../downloads/clips.json`);
+    return clipsJSON;
+  } catch (e) {
+    console.log(e);
+    return JSON.stringify({ clips: [] });
+  }
+}
+
+function setOptionDate(opt) {
+  let optionDate = new Date();
   let today = new Date();
-  let hours = new Date();
-  let yesterday = new Date();
-  let twodays = new Date();
-  let triple = new Date();
-  let week = new Date();
-  let month = new Date();
-  let fiver = new Date();
-
-  yesterday.setDate(today.getDate() - 1);
-  twodays.setDate(today.getDate() - 2);
-  triple.setDate(today.getDate() - 3);
-  fiver.setDate(today.getDate() - 5);
-  week.setDate(today.getDate() - 7);
-  month.setMonth(today.getMonth() - 1);
-  hours.setHours(today.getHours() - 12);
-
-  yesterday.setHours(0, 0, 0, 0);
-  twodays.setHours(0, 0, 0, 0);
-  triple.setHours(0, 0, 0, 0);
-  fiver.setHours(0, 0, 0, 0);
-  week.setHours(0, 0, 0, 0);
-  month.setHours(0, 0, 0, 0);
-
-  let gameData, getClipData;
-
-  let func = args.func || "game";
-  let name = args.name || "csgo";
-  let size = args.size || 15;
-  let date = args.date || yesterday;
-
-  switch (date) {
-    case "hours":
-      date = hours;
+  optionDate.setHours(0, 0, 0, 0);
+  switch (opt) {
+    case "yesterday":
+      optionDate.setDate(today.getDate() - 1);
       break;
-    case "day":
-      date = yesterday;
-      break;
-    case "twodays":
-      date = twodays;
-      break;
-    case "triple":
-      date = triple;
+    case "three":
+      optionDate.setDate(today.getDate() - 3);
       break;
     case "week":
-      date = week;
+      optionDate.setDate(today.getDate() - 7);
       break;
     case "month":
-      date = month;
+      optionDate.setMonth(today.getMonth() - 1);
       break;
     default:
-      date = yesterday;
+      optionDate.setDate(today.getDate() - 1);
   }
+  return optionDate;
+}
 
-  if (func == "game") {
-    gameData = await twitchGets.getGameByName(name);
+async function downloadClips(topClips) {
+  let clipList = [];
+  let durationAllVideos = 0;
+
+  await Promise.all(
+    topClips.map(async (item, i) => {
+      durationAllVideos += item.duration;
+      let filename = `clip${i + 1}`;
+      let URL_CLIP = item.thumbnail_url.replace("-preview-480x272.jpg", ".mp4");
+
+      await downloadClipLocal(URL_CLIP, filename);
+      clipList.push({
+        video: `${filename}.mp4`,
+        data: item,
+      });
+    })
+  );
+  console.log("Total Duration: ", time_convert(durationAllVideos));
+
+  return clipList;
+}
+
+async function downloadClipLocal(url, filename) {
+  fs.mkdir(__dirname + `/../downloads/`, { recursive: true }, (err) => {
+    if (err) throw err;
+  });
+
+  await saveFile(filename, url);
+}
+
+async function getFile(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (response) => {
+      const { statusCode } = response;
+      if (statusCode === 200) {
+        resolve(response);
+      }
+      reject(null);
+    });
+  });
+}
+
+async function saveFile(filename, url) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const result = await getFile(url);
+      if (result) {
+        const file = fs.createWriteStream(
+          __dirname + `/../downloads/${filename}.mp4`
+        );
+        result.pipe(file);
+        file.on("finish", () => {
+          console.log(`Video '${filename}' salvo com sucesso!`);
+          resolve();
+        });
+      }
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+async function getClipsData(type, name, date, today) {
+  let clipData;
+  if (type == "game") {
+    let gameData = await twitchGets.getGameByName(name);
     //gameData = await twitchGets.getGameById('582372781');
-    getClipData = await twitchGets.getClipsByGame(
+    clipData = await twitchGets.getClipsByGame(
       gameData.data[0].id,
       100,
       date,
       today
     );
   } else {
-    streamerData = await twitchGets.getUserByLogin(name);
-    getClipData = await twitchGets.getClipsByBroadcaster(
+    let streamerData = await twitchGets.getUserByLogin(name);
+    clipData = await twitchGets.getClipsByBroadcaster(
       streamerData.data[0].id,
       100,
       date,
       today
     );
   }
+  return clipData;
+}
 
-  console.log("dtini", date, "dtfim", today);
-
-  let durationAllVideos = 0;
-
-  console.log("dados:", getClipData.data);
-
-  let clipsFiltered = getClipData.data.filter(
+async function filterClips(clipsArray, size) {
+  let clipsFiltered = clipsArray.data.filter(
     (item) => item.duration >= 20
     //&& item.language == 'en'
   );
+
   let uniqueStreamerClips;
   uniqueStreamerClips = clipsFiltered;
   // uniqueStreamerClips = clipsFiltered.filter((value, index, self) => index === self.findIndex((t) => (
@@ -117,104 +169,17 @@ async function makeVideo() {
   // )))
 
   let topClips = uniqueStreamerClips.slice(0, size);
-  let clipList = [];
-
-  topClips.forEach((item, i) => {
-    durationAllVideos += item.duration;
-    let filename = `clip${i + 1}`;
-    let URL_CLIP = item.thumbnail_url.replace("-preview-480x272.jpg", ".mp4");
-
-    clipList.push({
-      video: `${filename}.mp4`,
-      data: item,
-    });
-
-    //Object.assign(progressBarList, {[filename]: multibar.create(100, 0)})
-
-    asyncWrapper(downloadClipLocal(URL_CLIP, filename));
-  });
-  console.log("Total Duration: ", durationAllVideos);
-  writeClipListToJSON(clipList);
 
   return topClips;
 }
 
-function downloadClipLocal(url, filename) {
-  fs.mkdir(__dirname + `/../downloads/`, { recursive: true }, (err) => {
-    if (err) throw err;
-  });
-
-  const file = fs.createWriteStream(
-    __dirname + `/../downloads/${filename}.mp4`
-  );
-  const request = https.get(url, function (response) {
-    response.pipe(file);
-    // after download completed close filestream
-    file.on("finish", () => {
-      console.log(`Video '${filename}' salvo com sucesso!`);
-      file.close();
-    });
-  });
-
-  /* conversion mp4 to webm works but not worth (time consuming for conversion and video build still slow) */
-
-  // var infs = new ffmpeg
-
-  // infs.addInput(url).output(__dirname + `/../downloads/${filename}.webm`)
-  // .on('start', function (commandLine) {
-  //   progressBarList[filename].start(99.99, 0.00);
-  //   console.log('Iniciou download do arquivo: ' + filename);
-  // })
-  // .on('error', function (err, stdout, stderr) {
-  //     console.log('Erro ao baixar o arquivo: ' + err.message, err, stderr);
-  // })
-  // .on('progress', function (progress) {
-  //   //console.log(`Processando Arquivo '${filename}': ` + progress.percent.toFixed(2) + '% done')
-  //   progressBarList[filename].update(Math.round((progress.percent + Number.EPSILON) * 100) / 100);
-  // })
-  // .on('end', function (err, stdout, stderr) {
-  //   progressBarList[filename].stop();
-  //   console.log(`Video '${filename}' salvo com sucesso!`);
-  // })
-  // .run()
-}
-
-function writeClipListToJSON(clipList) {
+async function writeClipListToJSON(clipList) {
   const clipListJSON = JSON.stringify({ clips: clipList });
   const file = fs.writeFileSync(
     __dirname + `/../downloads/clips.json`,
     clipListJSON
   );
 }
-
-//makeVideo()
-
-// async function getVideos() {
-//   let today = new Date();
-//   let yesterday = new Date();
-//   yesterday.setDate(today.getDate() - 1);
-//   let gameData = await twitchGets.getGameByName('multiversus');
-//   let getClipData = await twitchGets.getClipsByGame(gameData.data[0].id, 100, yesterday, today);
-
-//   let clipsEN = getClipData.data.filter(item => item.language === 'pt-br')
-
-//   let uniqueStreamerClips = clipsEN.filter((value, index, self) =>
-//     index === self.findIndex((t) => (
-//       t.broadcaster_name === value.broadcaster_name
-//   )))
-
-//   let top10Clips = uniqueStreamerClips.slice(0, 20)
-
-//   let top10URLS = [];
-
-//   top10Clips.forEach((item, i) => {
-//     let filename = `clip${i+1}`;
-//     let URL_CLIP = item.thumbnail_url.replace('-preview-480x272.jpg', '.mp4');
-
-//     top10URLS.push(URL_CLIP);
-//   })
-//   return top10URLS;
-// }
 
 function clearFolder(directory) {
   fs.readdir(directory, (err, files) => {
@@ -228,7 +193,62 @@ function clearFolder(directory) {
   });
 }
 
+async function makeFullVideo() {
+  await createListTxtFile();
+  await createScriptFile();
+
+  return new Promise((resolve, reject) => {
+    cp.exec(__dirname + "/../scripts/script.sh", (err, stdout, stdeer) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+async function createListTxtFile() {
+  const clipsJSON = readFileSync(__dirname + `/../downloads/clips.json`);
+  const clips = JSON.parse(clipsJSON).clips;
+
+  let text = `file './clips/fullintro.ts'`;
+  clips.map((clip) => {
+    text += `\nfile './clips/${clip.video.replace(".mp4", ".ts")}'`;
+  });
+  text += `\nfile './clips/outro.ts'`;
+  fs.writeFileSync(__dirname + "/../scripts/mylist.txt", text, (err) => {
+    if (err) console.log(err);
+  });
+}
+
+async function createScriptFile() {
+  const clipsJSON = readFileSync(__dirname + `/../downloads/clips.json`);
+  const clips = JSON.parse(clipsJSON).clips;
+
+  let script = `ffmpeg -y -i ../scripts/fullintro.mp4 -c:v copy -c:a copy ../scripts/clips/fullintro.ts\n\n`;
+  script += `cd ../downloads\n\n`;
+  clips.map((clip) => {
+    script += `ffmpeg -y -i ${
+      clip.video
+    } -c:v copy -c:a copy ../scripts/clips/${clip.video.replace(
+      ".mp4",
+      ".ts"
+    )}\n`;
+  });
+
+  script += `\ncd ../scripts`;
+  script += `\n\nffmpeg -y -i ./outro.mp4 -c:v copy -c:a copy ./clips/outro.ts\n\nwait`;
+  script += `\n\nffmpeg -y -f concat -safe 0 -i mylist.txt -c:a copy -c:v copy ./clips/all.ts\n\nwait`;
+  script += `\n\nffmpeg -y -i ./clips/all.ts -c:a aac -ar 48000 -c:v copy ./clips/output.mp4`;
+
+  fs.writeFileSync(__dirname + "/../scripts/script.sh", script, (err) => {
+    if (err) console.log(err);
+  });
+}
+
 module.exports = {
-  makeVideo,
-  //getVideos
+  generateClips,
+  writeClipListToJSON,
+  makeFullVideo,
 };
